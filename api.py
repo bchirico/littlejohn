@@ -1,7 +1,45 @@
 from flask import Flask, jsonify, request
+from flask_httpauth import HTTPBasicAuth
 
 app = Flask(__name__)
+auth = HTTPBasicAuth()
+
 SECRET_TOKEN = 'Basic secret_test_token' # embedded here only for exercise purpose
+
+AVAILABLE_TICKERS = [
+    "AAPL",
+    "MSFT",
+    "GOOG",
+    "AMZN",
+    "FB",
+    "TSLA",
+    "NVDA",
+    "JPM",
+    "BABA",
+    "JNJ",
+    "WMT",
+    "PG",
+    "PYPL",
+    "DIS",
+    "ADBE",
+    "PFE",
+    "V",
+    "MA",
+    "CRM",
+    "NFLX"
+]
+
+SEEDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+
+TICKER_SEEDS = dict(zip(AVAILABLE_TICKERS, SEEDS))
+
+print(TICKER_SEEDS)
+
+USERS = [
+    'john',
+    'mike',
+    'paul'
+]
 
 STOCKS = [
     {'price': 100.0, 'symbol': 'aapl'},
@@ -30,27 +68,27 @@ def get_last_90_days_prices(ticker):
 
     return PRICES[ticker]
 
-def check_auth(auth_header):
-    if auth_header == SECRET_TOKEN:
+@auth.verify_password
+def verify_password(username, password):
+    if username in USERS and password == '':
         return True
     return False
 
+@auth.error_handler
+def unauthorized():
+    return jsonify({'error': 'Unauthorized'}), 401
+
 @app.route('/stocks', methods=['GET'])
+@auth.login_required
 def get_stocks():
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not check_auth(auth_header):
-        return jsonify({'error': 'Unauthorized'}), 401
     return jsonify(STOCKS)
 
 @app.route('/tickers/<string:ticker>/history', methods=['GET'])
+@auth.login_required
 def get_stock_history(ticker):
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not check_auth(auth_header):
-        return jsonify({'error': 'Unauthorized'}), 401
-    
     ticker = ticker.upper()
 
-    if ticker not in PRICES.keys():
+    if ticker not in AVAILABLE_TICKERS:
         return jsonify({'error': 'Invalid ticker'}), 404
 
     data = get_last_90_days_prices(ticker)
